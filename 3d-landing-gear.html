@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Landing Gear - Hazard Identification</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: linear-gradient(135deg, #0a1628 0%, #0d2137 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            padding: 20px;
+            border-bottom: 2px solid #1e5a96;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: clamp(1.2rem, 3vw, 1.8rem);
+            color: #4da6ff;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 20px rgba(77, 166, 255, 0.5);
+        }
+
+        .header p {
+            margin-top: 8px;
+            color: #7ab8ed;
+            font-size: 0.95rem;
+        }
+
+        .instructions {
+            background: rgba(30, 90, 150, 0.15);
+            border: 1px solid #1e5a96;
+            border-radius: 8px;
+            padding: 12px 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .instructions p {
+            color: #a0c4e8;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .controls-hint {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .hint-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85rem;
+            color: #7ab8ed;
+        }
+
+        .hint-icon {
+            width: 24px;
+            height: 24px;
+            background: rgba(77, 166, 255, 0.2);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+        }
+
+        .viewer-container {
+            position: relative;
+            width: 100%;
+            height: 450px;
+            background: rgba(10, 22, 40, 0.9);
+            border: 2px solid #1e5a96;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        #canvas3d {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .part-label-3d {
+            position: absolute;
+            background: rgba(10, 30, 50, 0.95);
+            border: 1px solid #4da6ff;
+            border-radius: 6px;
+            padding: 8px 12px;
+            pointer-events: none;
+            display: none;
+            z-index: 100;
+            max-width: 200px;
+        }
+
+        .part-label-3d h4 {
+            font-family: 'Share Tech Mono', monospace;
+            color: #4da6ff;
+            font-size: 0.85rem;
+            margin-bottom: 4px;
+        }
+
+        .part-label-3d p {
+            color: #a0c4e8;
+            font-size: 0.75rem;
+            line-height: 1.4;
+        }
+
+        .legend {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .legend-item {
+            background: rgba(30, 90, 150, 0.15);
+            border: 1px solid #1e5a96;
+            border-radius: 8px;
+            padding: 10px 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .legend-item:hover {
+            background: rgba(30, 90, 150, 0.3);
+            border-color: #4da6ff;
+        }
+
+        .legend-item.active {
+            background: rgba(77, 166, 255, 0.2);
+            border-color: #4da6ff;
+        }
+
+        .legend-item span {
+            font-family: 'Share Tech Mono', monospace;
+            color: #7ab8ed;
+            font-size: 0.8rem;
+        }
+
+        .info-panel {
+            background: rgba(10, 22, 40, 0.9);
+            border: 2px solid #1e5a96;
+            border-radius: 12px;
+            padding: 20px;
+            display: none;
+        }
+
+        .info-panel.active {
+            display: block;
+        }
+
+        .info-panel h2 {
+            font-family: 'Share Tech Mono', monospace;
+            color: #4da6ff;
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+        }
+
+        .info-section {
+            margin-bottom: 15px;
+        }
+
+        .info-section h3 {
+            color: #4da6ff;
+            font-size: 1rem;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-section h3::before {
+            content: '';
+            width: 4px;
+            height: 16px;
+            background: #4da6ff;
+            border-radius: 2px;
+        }
+
+        .info-section p {
+            color: #c0d8f0;
+            line-height: 1.6;
+            font-size: 0.95rem;
+        }
+
+        .info-section ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .info-section ul li {
+            color: #c0d8f0;
+            padding: 6px 0;
+            padding-left: 18px;
+            position: relative;
+            font-size: 0.9rem;
+        }
+
+        .info-section ul li::before {
+            content: '▸';
+            position: absolute;
+            left: 0;
+            color: #4da6ff;
+        }
+
+        .hazard-section {
+            background: rgba(255, 77, 77, 0.1);
+            border: 1px solid #ff4d4d;
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .hazard-section h3 {
+            color: #ff4d4d;
+        }
+
+        .hazard-section h3::before {
+            background: #ff4d4d;
+        }
+
+        .hazard-section ul li::before {
+            color: #ff4d4d;
+        }
+
+        .close-info {
+            background: none;
+            border: 1px solid #4da6ff;
+            color: #4da6ff;
+            padding: 8px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 0.9rem;
+            margin-top: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .close-info:hover {
+            background: #4da6ff;
+            color: #0a1628;
+        }
+
+        .zoom-controls {
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            z-index: 50;
+        }
+
+        .zoom-btn {
+            width: 36px;
+            height: 36px;
+            background: rgba(10, 30, 50, 0.9);
+            border: 1px solid #4da6ff;
+            border-radius: 6px;
+            color: #4da6ff;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .zoom-btn:hover {
+            background: rgba(77, 166, 255, 0.2);
+        }
+
+        .reset-btn {
+            position: absolute;
+            bottom: 15px;
+            left: 15px;
+            background: rgba(10, 30, 50, 0.9);
+            border: 1px solid #4da6ff;
+            border-radius: 6px;
+            color: #4da6ff;
+            padding: 8px 12px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            z-index: 50;
+            font-family: 'Share Tech Mono', monospace;
+        }
+
+        .reset-btn:hover {
+            background: rgba(77, 166, 255, 0.2);
+        }
+
+        @media (max-width: 768px) {
+            .viewer-container {
+                height: 350px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🛞 3D Landing Gear Module</h1>
+            <p>Interactive Hazard Identification System</p>
+        </header>
+
+        <div class="instructions">
+            <p>Explore the 3D model by rotating, zooming, and clicking on parts to learn about hazards.</p>
+            <div class="controls-hint">
+                <div class="hint-item">
+                    <div class="hint-icon">👆</div>
+                    <span>Drag to rotate</span>
+                </div>
+                <div class="hint-item">
+                    <div class="hint-icon">🔍</div>
+                    <span>Pinch/Scroll to zoom</span>
+                </div>
+                <div class="hint-item">
+                    <div class="hint-icon">👇</div>
+                    <span>Click part for info</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="viewer-container">
+            <canvas id="canvas3d"></canvas>
+            <div class="part-label-3d" id="hoverLabel">
+                <h4>Part Name</h4>
+                <p>Click for details</p>
+            </div>
+            <div class="zoom-controls">
+                <button class="zoom-btn" id="zoomIn">+</button>
+                <button class="zoom-btn" id="zoomOut">−</button>
+            </div>
+            <button class="reset-btn" id="resetView">↺ Reset View</button>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item" data-part="strut" onclick="showInfo('strut')">
+                <span>01 — MAIN STRUT</span>
+            </div>
+            <div class="legend-item" data-part="wheel" onclick="showInfo('wheel')">
+                <span>02 — WHEEL & TIRE</span>
+            </div>
+            <div class="legend-item" data-part="brake" onclick="showInfo('brake')">
+                <span>03 — BRAKE DISC</span>
+            </div>
+            <div class="legend-item" data-part="axle" onclick="showInfo('axle')">
+                <span>04 — AXLE</span>
+            </div>
+        </div>
+
+        <div class="info-panel" id="infoPanel">
+            <h2 id="infoTitle">Part Name</h2>
+            <div class="info-section">
+                <h3>Description</h3>
+                <p id="infoDescription"></p>
+            </div>
+            <div class="info-section">
+                <h3>Components</h3>
+                <ul id="infoComponents"></ul>
+            </div>
+            <div class="info-section hazard-section">
+                <h3>⚠ Safety Hazards</h3>
+                <ul id="infoHazards"></ul>
+            </div>
+            <button class="close-info" onclick="closeInfo()">Close</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Part data
+        const partsData = {
+            strut: {
+                title: "Main Landing Gear Strut",
+                description: "The main strut is a tubular steel or aluminum alloy structure that connects the wheel assembly to the aircraft fuselage. It absorbs landing impact through oleo-pneumatic or spring steel design.",
+                components: [
+                    "Oleo strut cylinder",
+                    "Piston and metering pin",
+                    "Torque links (scissors)",
+                    "Attachment fittings",
+                    "Hydraulic fluid reservoir"
+                ],
+                hazards: [
+                    "HIGH PRESSURE — Oleo struts contain nitrogen gas up to 3,000 PSI. Never loosen fittings without depressurizing.",
+                    "CRUSHING HAZARD — Never position body under strut without proper jacking and safety stands.",
+                    "HYDRAULIC FLUID — Fluid is toxic and flammable. Wear gloves and eye protection.",
+                    "SPRING TENSION — Spring steel struts store energy that can release violently."
+                ]
+            },
+            wheel: {
+                title: "Wheel & Tire Assembly",
+                description: "Aircraft wheels are split-rim design made of aluminum or magnesium alloy. Tires are tubeless or tube-type, rated for high speed and heavy loads during landing.",
+                components: [
+                    "Wheel halves (inboard/outboard)",
+                    "Tire (6.00-6 or similar)",
+                    "Tire valve stem",
+                    "Wheel bearings",
+                    "Grease seal"
+                ],
+                hazards: [
+                    "TIRE EXPLOSION — Over-inflated or damaged tires can explode with fatal force. Never exceed rated pressure.",
+                    "WHEEL SEPARATION — Always use proper torque on wheel bolts. Loose wheels can separate on takeoff/landing.",
+                    "HOT TIRES — After landing, tires can be extremely hot. Allow cooling before inspection.",
+                    "BEARING FAILURE — Worn bearings can seize and cause wheel fire."
+                ]
+            },
+            brake: {
+                title: "Brake Disc Assembly",
+                description: "Single or multiple disc brakes mounted on the main gear provide stopping power. Operated hydraulically through pilot toe pedals or parking brake handle.",
+                components: [
+                    "Brake disc (rotor)",
+                    "Brake caliper",
+                    "Brake pads/linings",
+                    "Hydraulic lines",
+                    "Bleed valve"
+                ],
+                hazards: [
+                    "EXTREME HEAT — Brake discs can exceed 500°F after heavy braking. Severe burn risk.",
+                    "BRAKE FLUID — Hydraulic fluid (MIL-PRF-5606) is flammable and toxic. Avoid skin/eye contact.",
+                    "ASBESTOS WARNING — Older brake pads may contain asbestos. Use respiratory protection when servicing.",
+                    "BRAKE FIRE — Dragging brakes during taxi can cause fire. Check for proper clearance."
+                ]
+            },
+            axle: {
+                title: "Axle Assembly",
+                description: "The axle is a hardened steel shaft that supports the wheel and transfers loads to the strut. It houses the wheel bearings and provides the mounting point for the brake assembly.",
+                components: [
+                    "Axle shaft",
+                    "Bearing races (inner/outer)",
+                    "Axle nut and cotter pin",
+                    "Grease fittings",
+                    "Dust cap"
+                ],
+                hazards: [
+                    "IMPROPER TORQUE — Under-torqued axle nuts can cause wheel separation. Always use calibrated torque wrench.",
+                    "BEARING CONTAMINATION — Dirt or water in bearings causes premature failure. Keep work area clean.",
+                    "JACK FAILURE — Always use jack stands as backup. Hydraulic jacks can fail suddenly.",
+                    "PINCH POINTS — Fingers can be caught between wheel and axle during installation."
+                ]
+            }
+        };
+
+        // Three.js setup
+        let scene, camera, renderer, controls;
+        let parts = {};
+        let selectedPart = null;
+        let isRotating = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let targetRotation = { x: 0, y: 0 };
+        let currentRotation = { x: 0, y: 0 };
+        let cameraDistance = 5;
+        let raycaster, mouse;
+
+        function init() {
+            const container = document.getElementById('canvas3d');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a1628);
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
+            camera.position.set(3, 2, 5);
+            camera.lookAt(0, 0, 0);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ canvas: container, antialias: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+            // Raycaster for clicking
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0x4da6ff, 0.4);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(5, 5, 5);
+            scene.add(directionalLight);
+
+            const directionalLight2 = new THREE.DirectionalLight(0x4da6ff, 0.3);
+            directionalLight2.position.set(-5, 3, -5);
+            scene.add(directionalLight2);
+
+            // Create landing gear
+            createLandingGear();
+
+            // Add grid
+            const gridHelper = new THREE.GridHelper(10, 20, 0x1e5a96, 0x0d2137);
+            gridHelper.position.y = -1.5;
+            scene.add(gridHelper);
+
+            // Event listeners
+            container.addEventListener('mousedown', onMouseDown);
+            container.addEventListener('mousemove', onMouseMove);
+            container.addEventListener('mouseup', onMouseUp);
+            container.addEventListener('mouseleave', onMouseUp);
+            container.addEventListener('wheel', onWheel);
+            container.addEventListener('click', onClick);
+
+            // Touch events
+            container.addEventListener('touchstart', onTouchStart);
+            container.addEventListener('touchmove', onTouchMove);
+            container.addEventListener('touchend', onTouchEnd);
+
+            // Zoom buttons
+            document.getElementById('zoomIn').addEventListener('click', () => {
+                cameraDistance = Math.max(2, cameraDistance - 0.5);
+                updateCamera();
+            });
+            document.getElementById('zoomOut').addEventListener('click', () => {
+                cameraDistance = Math.min(10, cameraDistance + 0.5);
+                updateCamera();
+            });
+            document.getElementById('resetView').addEventListener('click', resetView);
+
+            // Resize
+            window.addEventListener('resize', onResize);
+
+            // Start animation
+            animate();
+        }
+
+        function createLandingGear() {
+            const group = new THREE.Group();
+
+            // Materials
+            const strutMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x3a7ca5,
+                shininess: 80,
+                transparent: true,
+                opacity: 0.9
+            });
+            const wheelMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x2d5a7b,
+                shininess: 60
+            });
+            const brakeMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x8b4513,
+                shininess: 100
+            });
+            const axleMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x4a6fa5,
+                shininess: 90
+            });
+            const wireMaterial = new THREE.LineBasicMaterial({ color: 0x4da6ff });
+
+            // Main Strut
+            const strutGeometry = new THREE.CylinderGeometry(0.12, 0.15, 2.5, 16);
+            const strut = new THREE.Mesh(strutGeometry, strutMaterial);
+            strut.position.y = 0.5;
+            strut.userData = { name: 'strut' };
+            parts.strut = strut;
+            group.add(strut);
+
+            // Strut wireframe
+            const strutWireGeo = new THREE.EdgesGeometry(strutGeometry);
+            const strutWire = new THREE.LineSegments(strutWireGeo, wireMaterial);
+            strutWire.position.copy(strut.position);
+            group.add(strutWire);
+
+            // Axle
+            const axleGeometry = new THREE.CylinderGeometry(0.06, 0.06, 1.8, 12);
+            const axle = new THREE.Mesh(axleGeometry, axleMaterial);
+            axle.rotation.z = Math.PI / 2;
+            axle.position.y = -0.7;
+            axle.userData = { name: 'axle' };
+            parts.axle = axle;
+            group.add(axle);
+
+            // Axle wireframe
+            const axleWireGeo = new THREE.EdgesGeometry(axleGeometry);
+            const axleWire = new THREE.LineSegments(axleWireGeo, wireMaterial);
+            axleWire.rotation.copy(axle.rotation);
+            axleWire.position.copy(axle.position);
+            group.add(axleWire);
+
+            // Left Wheel
+            const wheelGeometry = new THREE.CylinderGeometry(0.5, 0.5, 0.25, 24);
+            const wheelLeft = new THREE.Mesh(wheelGeometry, wheelMaterial);
+            wheelLeft.rotation.z = Math.PI / 2;
+            wheelLeft.position.set(-0.8, -0.7, 0);
+            wheelLeft.userData = { name: 'wheel' };
+            parts.wheel = wheelLeft;
+            group.add(wheelLeft);
+
+            // Wheel wireframe
+            const wheelWireGeo = new THREE.EdgesGeometry(wheelGeometry);
+            const wheelWireLeft = new THREE.LineSegments(wheelWireGeo, wireMaterial);
+            wheelWireLeft.rotation.copy(wheelLeft.rotation);
+            wheelWireLeft.position.copy(wheelLeft.position);
+            group.add(wheelWireLeft);
+
+            // Right Wheel
+            const wheelRight = new THREE.Mesh(wheelGeometry, wheelMaterial);
+            wheelRight.rotation.z = Math.PI / 2;
+            wheelRight.position.set(0.8, -0.7, 0);
+            wheelRight.userData = { name: 'wheel' };
+            group.add(wheelRight);
+
+            const wheelWireRight = new THREE.LineSegments(wheelWireGeo, wireMaterial);
+            wheelWireRight.rotation.copy(wheelRight.rotation);
+            wheelWireRight.position.copy(wheelRight.position);
+            group.add(wheelWireRight);
+
+            // Tire treads (rings)
+            const tireGeometry = new THREE.TorusGeometry(0.5, 0.12, 8, 24);
+            const tireMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x1a3a5c,
+                shininess: 30
+            });
+
+            const tireLeft = new THREE.Mesh(tireGeometry, tireMaterial);
+            tireLeft.rotation.y = Math.PI / 2;
+            tireLeft.position.set(-0.8, -0.7, 0);
+            tireLeft.userData = { name: 'wheel' };
+            group.add(tireLeft);
+
+            const tireRight = new THREE.Mesh(tireGeometry, tireMaterial);
+            tireRight.rotation.y = Math.PI / 2;
+            tireRight.position.set(0.8, -0.7, 0);
+            tireRight.userData = { name: 'wheel' };
+            group.add(tireRight);
+
+            // Brake Discs
+            const brakeGeometry = new THREE.CylinderGeometry(0.35, 0.35, 0.05, 24);
+            const brakeLeft = new THREE.Mesh(brakeGeometry, brakeMaterial);
+            brakeLeft.rotation.z = Math.PI / 2;
+            brakeLeft.position.set(-0.55, -0.7, 0);
+            brakeLeft.userData = { name: 'brake' };
+            parts.brake = brakeLeft;
+            group.add(brakeLeft);
+
+            const brakeRight = new THREE.Mesh(brakeGeometry, brakeMaterial);
+            brakeRight.rotation.z = Math.PI / 2;
+            brakeRight.position.set(0.55, -0.7, 0);
+            brakeRight.userData = { name: 'brake' };
+            group.add(brakeRight);
+
+            // Brake wireframes
+            const brakeWireGeo = new THREE.EdgesGeometry(brakeGeometry);
+            const brakeWireLeft = new THREE.LineSegments(brakeWireGeo, wireMaterial);
+            brakeWireLeft.rotation.copy(brakeLeft.rotation);
+            brakeWireLeft.position.copy(brakeLeft.position);
+            group.add(brakeWireLeft);
+
+            const brakeWireRight = new THREE.LineSegments(brakeWireGeo, wireMaterial);
+            brakeWireRight.rotation.copy(brakeRight.rotation);
+            brakeWireRight.position.copy(brakeRight.position);
+            group.add(brakeWireRight);
+
+            // Torque links (scissors)
+            const linkGeometry = new THREE.BoxGeometry(0.04, 0.6, 0.02);
+            const linkMaterial = new THREE.MeshPhongMaterial({ color: 0x3a7ca5 });
+
+            const link1 = new THREE.Mesh(linkGeometry, linkMaterial);
+            link1.position.set(0.15, 0.3, 0.08);
+            link1.rotation.z = 0.2;
+            link1.userData = { name: 'strut' };
+            group.add(link1);
+
+            const link2 = new THREE.Mesh(linkGeometry, linkMaterial);
+            link2.position.set(0.15, -0.1, 0.08);
+            link2.rotation.z = -0.2;
+            link2.userData = { name: 'strut' };
+            group.add(link2);
+
+            scene.add(group);
+        }
+
+        function updateCamera() {
+            const x = cameraDistance * Math.sin(currentRotation.y) * Math.cos(currentRotation.x);
+            const y = cameraDistance * Math.sin(currentRotation.x) + 1;
+            const z = cameraDistance * Math.cos(currentRotation.y) * Math.cos(currentRotation.x);
+            camera.position.set(x, y, z);
+            camera.lookAt(0, 0, 0);
+        }
+
+        function onMouseDown(e) {
+            isRotating = true;
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+        }
+
+        function onMouseMove(e) {
+            if (!isRotating) {
+                // Hover detection
+                updateHover(e);
+                return;
+            }
+
+            const deltaX = e.clientX - previousMousePosition.x;
+            const deltaY = e.clientY - previousMousePosition.y;
+
+            currentRotation.y += deltaX * 0.01;
+            currentRotation.x += deltaY * 0.01;
+            currentRotation.x = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, currentRotation.x));
+
+            updateCamera();
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+        }
+
+        function onMouseUp() {
+            isRotating = false;
+        }
+
+        function onWheel(e) {
+            e.preventDefault();
+            cameraDistance += e.deltaY * 0.005;
+            cameraDistance = Math.max(2, Math.min(10, cameraDistance));
+            updateCamera();
+        }
+
+        let touchStartDistance = 0;
+        let lastTouchPosition = { x: 0, y: 0 };
+
+        function onTouchStart(e) {
+            if (e.touches.length === 1) {
+                isRotating = true;
+                lastTouchPosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            } else if (e.touches.length === 2) {
+                isRotating = false;
+                touchStartDistance = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+            }
+        }
+
+        function onTouchMove(e) {
+            e.preventDefault();
+            
+            if (e.touches.length === 1 && isRotating) {
+                const deltaX = e.touches[0].clientX - lastTouchPosition.x;
+                const deltaY = e.touches[0].clientY - lastTouchPosition.y;
+
+                currentRotation.y += deltaX * 0.01;
+                currentRotation.x += deltaY * 0.01;
+                currentRotation.x = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, currentRotation.x));
+
+                updateCamera();
+                lastTouchPosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            } else if (e.touches.length === 2) {
+                const currentDistance = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+                const delta = touchStartDistance - currentDistance;
+                cameraDistance += delta * 0.01;
+                cameraDistance = Math.max(2, Math.min(10, cameraDistance));
+                updateCamera();
+                touchStartDistance = currentDistance;
+            }
+        }
+
+        function onTouchEnd() {
+            isRotating = false;
+        }
+
+        function updateHover(e) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(scene.children, true);
+
+            const label = document.getElementById('hoverLabel');
+
+            if (intersects.length > 0) {
+                const object = intersects[0].object;
+                if (object.userData && object.userData.name) {
+                    const data = partsData[object.userData.name];
+                    if (data) {
+                        label.querySelector('h4').textContent = data.title;
+                        label.querySelector('p').textContent = 'Click for details';
+                        label.style.display = 'block';
+                        label.style.left = (e.clientX - rect.left + 15) + 'px';
+                        label.style.top = (e.clientY - rect.top + 15) + 'px';
+                        renderer.domElement.style.cursor = 'pointer';
+                        return;
+                    }
+                }
+            }
+
+            label.style.display = 'none';
+            renderer.domElement.style.cursor = 'grab';
+        }
+
+        function onClick(e) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(scene.children, true);
+
+            if (intersects.length > 0) {
+                const object = intersects[0].object;
+                if (object.userData && object.userData.name) {
+                    showInfo(object.userData.name);
+                }
+            }
+        }
+
+        function showInfo(partName) {
+            const data = partsData[partName];
+            if (!data) return;
+
+            document.getElementById('infoTitle').textContent = data.title;
+            document.getElementById('infoDescription').textContent = data.description;
+            document.getElementById('infoComponents').innerHTML = 
+                data.components.map(c => `<li>${c}</li>`).join('');
+            document.getElementById('infoHazards').innerHTML = 
+                data.hazards.map(h => `<li>${h}</li>`).join('');
+
+            document.getElementById('infoPanel').classList.add('active');
+
+            // Highlight legend
+            document.querySelectorAll('.legend-item').forEach(item => {
+                item.classList.remove('active');
+                if (item.dataset.part === partName) {
+                    item.classList.add('active');
+                }
+            });
+
+            // Highlight 3D part
+            highlightPart(partName);
+        }
+
+        function highlightPart(partName) {
+            // Reset all parts
+            Object.values(parts).forEach(part => {
+                if (part.material) {
+                    part.material.emissive = new THREE.Color(0x000000);
+                }
+            });
+
+            // Highlight selected
+            if (parts[partName]) {
+                parts[partName].material.emissive = new THREE.Color(0x4da6ff);
+                parts[partName].material.emissiveIntensity = 0.3;
+            }
+        }
+
+        function closeInfo() {
+            document.getElementById('infoPanel').classList.remove('active');
+            document.querySelectorAll('.legend-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            Object.values(parts).forEach(part => {
+                if (part.material) {
+                    part.material.emissive = new THREE.Color(0x000000);
+                }
+            });
+        }
+
+        function resetView() {
+            currentRotation = { x: 0.3, y: 0.5 };
+            cameraDistance = 5;
+            updateCamera();
+        }
+
+        function onResize() {
+            const container = document.getElementById('canvas3d');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
+
+        // Initialize
+        init();
+        resetView();
+    </script>
+</body>
+</html>
